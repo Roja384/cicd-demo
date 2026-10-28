@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Product Inventory Manager</title>
+  <style>
+    :root { font-family: Inter, Arial, sans-serif; color: #1f2937; background: #f3f5f8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: #172554; color: white; padding: 28px 20px; }
+    header div, main { max-width: 1000px; margin: auto; }
+    h1 { margin: 0 0 8px; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+    header p { margin: 0; color: #dbeafe; }
+    main { padding: 24px 20px 40px; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .card, .panel { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 3px 12px #0f172a0a; }
+    .label { color: #64748b; font-size: .9rem; }
+    .metric { font-size: 1.7rem; font-weight: 700; margin-top: 8px; }
+    .panel { margin-bottom: 18px; }
+    h2 { font-size: 1.15rem; margin: 0 0 16px; }
+    form { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; }
+    input, button { font: inherit; padding: 11px 12px; border-radius: 8px; }
+    input { min-width: 0; border: 1px solid #cbd5e1; }
+    button { border: 0; background: #2563eb; color: white; cursor: pointer; font-weight: 600; }
+    button:hover { background: #1d4ed8; }
+    #message { min-height: 20px; margin: 12px 0 0; font-size: .92rem; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 540px; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+    th { color: #64748b; font-size: .85rem; font-weight: 600; }
+    .empty { color: #64748b; text-align: center; padding: 24px; }
+    footer { color: #64748b; font-size: .85rem; text-align: center; padding: 0 20px 24px; }
+    @media (max-width: 700px) { form { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Product Inventory Manager</h1>
+      <p>Track products, stock quantities and inventory value.</p>
+    </div>
+  </header>
+  <main>
+    <section class="summary">
+      <div class="card"><div class="label">Total products</div><div class="metric" id="totalProducts">0</div></div>
+      <div class="card"><div class="label">Total inventory value</div><div class="metric" id="inventoryValue">₹0.00</div></div>
+    </section>
+    <section class="panel">
+      <h2>Add a product</h2>
+      <form id="productForm">
+        <input id="name" name="name" placeholder="Product name" maxlength="100" required>
+        <input id="price" name="price" type="number" placeholder="Price (₹)" min="0.01" step="0.01" required>
+        <input id="stock" name="stock" type="number" placeholder="Stock" min="0" step="1" required>
+        <button type="submit">Add product</button>
+      </form>
+      <p id="message" role="status"></p>
+    </section>
+    <section class="panel">
+      <h2>Inventory</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Product</th><th>Price</th><th>Stock</th><th>Stock value</th></tr></thead>
+          <tbody id="products"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <footer>Demo application for learning Node.js testing and GitHub Actions CI/CD.</footer>
+  <script>
+    const currency = value => new Intl.NumberFormat("en-IN", {
+      style: "currency", currency: "INR"
+    }).format(value);
+
+    async function refreshInventory() {
+      const [productsResponse, summaryResponse] = await Promise.all([
+        fetch("/api/products"),
+        fetch("/api/summary")
+      ]);
+      if (!productsResponse.ok || !summaryResponse.ok) throw new Error("Could not load inventory");
+      const products = await productsResponse.json();
+      const summary = await summaryResponse.json();
+
+      document.getElementById("totalProducts").textContent = summary.totalProducts;
+      document.getElementById("inventoryValue").textContent = currency(summary.inventoryValue);
+
+      const tbody = document.getElementById("products");
+      tbody.replaceChildren();
+
+      if (products.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 5;
+        cell.className = "empty";
+        cell.textContent = "No products yet. Add your first product above.";
+        row.appendChild(cell);
+        tbody.appendChild(row);
+        return;
+      }
+
+      for (const product of products) {
+        const row = document.createElement("tr");
+        const values = [
+          product.id, product.name, currency(product.price),
+          product.stock, currency(product.price * product.stock)
+        ];
+        for (const value of values) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        }
+        tbody.appendChild(row);
+      }
+    }
+
+    document.getElementById("productForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const message = document.getElementById("message");
+      message.textContent = "";
+
+      try {
+        const response = await fetch("/api/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: document.getElementById("name").value.trim(),
+            price: Number(document.getElementById("price").value),
+            stock: Number(document.getElementById("stock").value)
+          })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not add product");
+        message.textContent = "Product added successfully.";
+        event.target.reset();
+        await refreshInventory();
+      } catch (error) {
+        message.textContent = error.message;
+      }
+    });
+
+    refreshInventory().catch(error => {
+      document.getElementById("message").textContent = error.message;
+    });
+  </script>
+</body>
+</html>

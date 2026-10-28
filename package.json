@@ -1,0 +1,11 @@
+{
+  "name": "inventory-manager",
+  "version": "1.0.0",
+  "description": "Small product inventory web application for learning CI/CD",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "node --test"
+  },
+  "private": true
+}

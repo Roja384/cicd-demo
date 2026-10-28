@@ -1,0 +1,58 @@
+name: Inventory Manager CI CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    # Hosted runner: runs tests in GitHub's environment.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run automated tests (CI)
+        run: npm test
+
+  deploy-local:
+    # Runs only after tests pass on pushes to main.
+    # Requires a Windows self-hosted runner registered with labels:
+    # self-hosted and windows.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: [self-hosted, windows]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify tests before deployment
+        run: npm test
+
+      - name: Deploy files to local folder (CD)
+        shell: powershell
+        run: |
+          $destination = "$env:USERPROFILE\inventory-deployed"
+          New-Item -ItemType Directory -Force -Path $destination | Out-Null
+
+          Copy-Item app.js, inventory.js, package.json `
+            -Destination $destination -Force
+          Copy-Item public `
+            -Destination $destination -Recurse -Force
+
+          Write-Host "Deployed to $destination"

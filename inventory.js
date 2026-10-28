@@ -3,7 +3,7 @@ let nextId = 1;
 
 function addProduct(name, price, stock) {
   if (typeof name !== "string" || !name.trim()) {
-    throw new Error("Product name is required");
+    throw new Error("Please enter a product name");
   }
 
   if (!Number.isFinite(price) || price <= 0) {

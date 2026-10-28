@@ -1,0 +1,12 @@
+﻿{
+  "repositoryName": "Roja384/cicd-demo",
+  "pipelineDirectory": "cicd-demo",
+  "workspaceDirectory": "cicd-demo\\cicd-demo",
+  "repositories": {
+    "Roja384/cicd-demo": {
+      "repositoryPath": "cicd-demo\\cicd-demo",
+      "lastRunOn": "10/28/2026 13:57:33 +05:30"
+    }
+  },
+  "lastRunOn": "10/28/2026 14:06:08 +05:30"
+}
